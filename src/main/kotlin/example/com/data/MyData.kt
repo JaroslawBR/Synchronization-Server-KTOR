@@ -13,7 +13,7 @@ data class Task(
 
 data class EditInfo(
     var userId: String = "",
-    var timeStamp: Int = 0
+    var timeStamp: Long = 0
 )
 
 object TaskStorage {
@@ -124,7 +124,7 @@ object TaskStorage {
     }
 
     private fun isNewerEdit(existingEdit: EditInfo?, newEdit: EditInfo?): Boolean {
-        return (existingEdit?.timeStamp ?: Int.MIN_VALUE) <= (newEdit?.timeStamp ?: Int.MIN_VALUE)
+        return (existingEdit?.timeStamp ?: Long.MIN_VALUE) <= (newEdit?.timeStamp ?: Long.MIN_VALUE)
     }
 
     private fun addEditTask(key: String, value: Task) {

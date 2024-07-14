@@ -43,5 +43,13 @@ fun Application.configureRouting() {
             val idListToIgnore = TaskStorage.returnIdToIgnore()
             call.respond(idListToIgnore)
         }
+
+        post("/updateIgnoreID") {
+            val idListToIgnore = call.receive<List<String>>()
+            val receivedHash = call.request.headers["Hash"] ?: ""
+            val result = TaskStorage.removeFromList(idListToIgnore, receivedHash)
+            call.respond(result)
+
+        }
     }
 }
