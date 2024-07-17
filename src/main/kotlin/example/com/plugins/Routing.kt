@@ -10,7 +10,6 @@ import io.ktor.server.routing.*
 fun Application.configureRouting() {
     routing {
         get("/") {
-            println("Test")
             call.respondText("Hello Users!!")
         }
         get("/checkTaskList"){
