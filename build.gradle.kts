@@ -27,7 +27,7 @@ repositories {
 
 configure<AppEngineAppYamlExtension> {
     stage {
-        setArtifact("build/libs/${project.name}-all.jar")
+        setArtifact("build/libs/com.list.synchronization-all.jar")
     }
     deploy {
         version = "GCLOUD_CONFIG"
@@ -52,6 +52,7 @@ dependencies {
     testImplementation("org.jetbrains.kotlin:kotlin-test-junit:$kotlin_version")
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.5.2")
     implementation("io.ktor:ktor-server-auth:$ktor_version")
+    implementation("com.google.cloud:google-cloud-storage:2.1.0")
 }
 
 

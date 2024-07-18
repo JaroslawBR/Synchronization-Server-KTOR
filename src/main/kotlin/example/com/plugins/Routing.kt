@@ -1,7 +1,7 @@
 package example.com.plugins
 
 import example.com.data.*
-import example.com.data.Authentication1.authenticate
+import example.com.data.TaskStorage.authenticate
 import io.ktor.http.*
 import io.ktor.server.application.*
 import io.ktor.server.auth.*
@@ -84,7 +84,7 @@ fun Application.configureRouting() {
             post("/addNewUsers"){
                 authorize(call, Access.ADMIN){
                     val user = call.receive<User>()
-                    val result = Authentication1.addUser(user)
+                    val result = TaskStorage.addUser(user)
                     call.respond(result)
 
 
@@ -97,8 +97,8 @@ fun Application.configureRouting() {
 
 suspend inline fun authorize(call: ApplicationCall, requiredAccess: Access, crossinline block: suspend () -> Unit) {
     val principal = call.principal<UserIdPrincipal>() ?: return call.respondText("Unauthorized", status = HttpStatusCode.Unauthorized)
-    val user = Authentication1.getUser(principal.name)
-    if (Authentication1.hasAccess(user, requiredAccess)) {
+    val user = TaskStorage.getUser(principal.name)
+    if (TaskStorage.hasAccess(user, requiredAccess)) {
         block()
     } else {
         call.respondText("Forbidden", status = HttpStatusCode.Forbidden)

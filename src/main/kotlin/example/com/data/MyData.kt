@@ -5,6 +5,20 @@ import com.google.gson.reflect.TypeToken
 import java.io.File
 import java.security.MessageDigest
 
+data class User(
+    val name: String = "",
+    val password: String = "",
+    val access: Access = Access.SPECTATOR
+)
+
+enum class Access {
+    ADMIN,      // dostęp do wszystkiego
+    MODERATOR,  // dostęp do większości
+    EDITOR,     // wysyłanie + pobieranie
+    SPECTATOR,  // pobieranie
+    GUEST       // brak
+}
+
 data class Task(
     var title: String = "",
     var text: String = "",
@@ -20,6 +34,7 @@ object TaskStorage {
     private val taskList: MutableMap<String, Task> = mutableMapOf() // id - string
     private var hashTask: String? = null
     private val oldHashList: MutableSet<String> = mutableSetOf()
+    private val usersList: MutableList<User> = mutableListOf(User("Admin", "adminpass", Access.ADMIN))
 
     private val idListToIgnore: MutableSet<String> = mutableSetOf()
     internal val lock = Any()
@@ -29,20 +44,14 @@ object TaskStorage {
     private const val taskListFile = "$folderPath/taskList.json"
     private const val hashTaskFile = "$folderPath/hashTask.json"
     private const val oldHashListFile = "$folderPath/oldHashList.json"
-
-    fun start(){
-        val folder = File(folderPath)
-        if (!folder.exists()) {
-            folder.mkdirs()
-        }
-        loadFromFile()
-    }
+    private const val usersListFile = "${folderPath}/usersList.json"
 
     private fun saveToFile() {
         synchronized(lock) {
             File(taskListFile).writeText(gson.toJson(taskList))
             File(hashTaskFile).writeText(gson.toJson(hashTask))
             File(oldHashListFile).writeText(gson.toJson(oldHashList))
+            File(usersListFile).writeText(gson.toJson(usersList))
         }
     }
 
@@ -56,16 +65,14 @@ object TaskStorage {
                     taskList.clear()
                     taskList.putAll(loadedTaskList)
                 }
-            } catch (e: Exception) {
-                saveToFile()
+            } catch (_: Exception) {
             }
 
             try {
                 if (File(hashTaskFile).exists()) {
                     hashTask = gson.fromJson(File(hashTaskFile).readText(), String::class.java)
                 }
-            } catch (e: Exception) {
-                saveToFile()
+            } catch (_: Exception) {
             }
 
             try {
@@ -75,11 +82,70 @@ object TaskStorage {
                     oldHashList.clear()
                     oldHashList.addAll(loadedOldHashList)
                 }
-            } catch (e: Exception) {
-                saveToFile()
+            } catch (_: Exception) {
             }
+
+            try {
+                if (File(usersListFile).exists()) {
+                    val oldHashType = object : TypeToken<MutableList<User>>() {}.type
+                    val loadUsersList: MutableList<User> = gson.fromJson(File(usersListFile).readText(), oldHashType)
+                    usersList.clear()
+                    usersList.addAll(loadUsersList)
+                }
+            } catch (_: Exception) {
+            }
+
+
         }
     }
+
+
+    fun addUser(user: User): String {
+        synchronized(lock) {
+            usersList.add(user)
+            saveToFile()
+            return "user name:${user.name}, access: ${user.access} was added to database"
+        }
+    }
+
+
+    fun authenticate(name: String, password: String): User? {
+        return usersList.find { it.name == name && it.password == password }
+    }
+
+    fun getUser(name: String): User? {
+        return usersList.find { it.name == name }
+    }
+
+
+
+
+
+
+    fun hasAccess(user: User?, requiredAccess: Access): Boolean {
+        if (user == null) return false
+        return when (requiredAccess) {
+            Access.ADMIN -> user.access == Access.ADMIN
+            Access.MODERATOR -> user.access == Access.ADMIN || user.access == Access.MODERATOR
+            Access.EDITOR -> user.access == Access.ADMIN || user.access == Access.MODERATOR || user.access == Access.EDITOR
+            Access.SPECTATOR -> user.access == Access.ADMIN || user.access == Access.MODERATOR || user.access == Access.EDITOR || user.access == Access.SPECTATOR
+            Access.GUEST -> user.access == Access.ADMIN || user.access == Access.MODERATOR || user.access == Access.EDITOR || user.access == Access.SPECTATOR || user.access == Access.GUEST
+        }
+    }
+
+    fun start(){
+        val folder = File(folderPath)
+        if (!folder.exists()) {
+            folder.mkdirs()
+        }
+        loadFromFile()
+        saveToFile(
+
+        )
+    }
+
+
+
 
 
     fun forceClearUpdate(newTaskList: MutableMap<String, Task>): String {
