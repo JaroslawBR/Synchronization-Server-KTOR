@@ -1,8 +1,10 @@
 package example.com.data
 
+import com.google.cloud.storage.BlobId
+import com.google.cloud.storage.BlobInfo
+import com.google.cloud.storage.StorageOptions
 import com.google.gson.Gson
 import com.google.gson.reflect.TypeToken
-import java.io.File
 import java.security.MessageDigest
 
 data class User(
@@ -40,62 +42,74 @@ object TaskStorage {
     internal val lock = Any()
     val gson = Gson()
 
-    const val folderPath = "file"
-    private const val taskListFile = "$folderPath/taskList.json"
-    private const val hashTaskFile = "$folderPath/hashTask.json"
-    private const val oldHashListFile = "$folderPath/oldHashList.json"
-    private const val usersListFile = "${folderPath}/usersList.json"
+    const val bucketName = "kotr-test.appspot.com"
+
+    private fun uploadJsonToGcs(fileName: String, data: Any?) {
+        val storage = StorageOptions.getDefaultInstance().service
+        val blobId = BlobId.of(bucketName, fileName)
+        val blobInfo = BlobInfo.newBuilder(blobId).setContentType("application/json").build()
+        val jsonData = gson.toJson(data)
+        storage.create(blobInfo, jsonData.toByteArray())
+        println("File $fileName uploaded to $bucketName.")
+    }
+
+    private fun downloadJsonFromGcs(fileName: String): String? {
+        val storage = StorageOptions.getDefaultInstance().service
+        val blob = storage.get(BlobId.of(bucketName, fileName))
+        return blob?.getContent()?.let { String(it) }
+    }
 
     private fun saveToFile() {
         synchronized(lock) {
-            File(taskListFile).writeText(gson.toJson(taskList))
-            File(hashTaskFile).writeText(gson.toJson(hashTask))
-            File(oldHashListFile).writeText(gson.toJson(oldHashList))
-            File(usersListFile).writeText(gson.toJson(usersList))
+            uploadJsonToGcs("taskList.json", taskList)
+            uploadJsonToGcs("hashTask.json", hashTask)
+            uploadJsonToGcs("oldHashList.json", oldHashList)
+            uploadJsonToGcs("usersList.json", usersList)
         }
     }
 
     private fun loadFromFile() {
         synchronized(lock) {
             try {
-                if (File(taskListFile).exists()) {
+                downloadJsonFromGcs("taskList.json")?.let {
                     val taskType = object : TypeToken<MutableMap<String, Task>>() {}.type
-                    val loadedTaskList: MutableMap<String, Task> =
-                        gson.fromJson(File(taskListFile).readText(), taskType)
+                    val loadedTaskList: MutableMap<String, Task> = gson.fromJson(it, taskType)
                     taskList.clear()
                     taskList.putAll(loadedTaskList)
                 }
-            } catch (_: Exception) {
+            } catch (e: Exception) {
+                e.printStackTrace()
             }
 
             try {
-                if (File(hashTaskFile).exists()) {
-                    hashTask = gson.fromJson(File(hashTaskFile).readText(), String::class.java)
+                downloadJsonFromGcs("hashTask.json")?.let {
+                    hashTask = gson.fromJson(it, String::class.java)
                 }
-            } catch (_: Exception) {
+            } catch (e: Exception) {
+                e.printStackTrace()
             }
 
             try {
-                if (File(oldHashListFile).exists()) {
+                downloadJsonFromGcs("oldHashList.json")?.let {
                     val oldHashType = object : TypeToken<MutableSet<String>>() {}.type
-                    val loadedOldHashList: MutableSet<String> = gson.fromJson(File(oldHashListFile).readText(), oldHashType)
+                    val loadedOldHashList: MutableSet<String> = gson.fromJson(it, oldHashType)
                     oldHashList.clear()
                     oldHashList.addAll(loadedOldHashList)
                 }
-            } catch (_: Exception) {
+            } catch (e: Exception) {
+                e.printStackTrace()
             }
 
             try {
-                if (File(usersListFile).exists()) {
-                    val oldHashType = object : TypeToken<MutableList<User>>() {}.type
-                    val loadUsersList: MutableList<User> = gson.fromJson(File(usersListFile).readText(), oldHashType)
+                downloadJsonFromGcs("usersList.json")?.let {
+                    val userType = object : TypeToken<MutableList<User>>() {}.type
+                    val loadUsersList: MutableList<User> = gson.fromJson(it, userType)
                     usersList.clear()
                     usersList.addAll(loadUsersList)
                 }
-            } catch (_: Exception) {
+            } catch (e: Exception) {
+                e.printStackTrace()
             }
-
-
         }
     }
 
@@ -134,14 +148,7 @@ object TaskStorage {
     }
 
     fun start(){
-        val folder = File(folderPath)
-        if (!folder.exists()) {
-            folder.mkdirs()
-        }
         loadFromFile()
-        saveToFile(
-
-        )
     }
 
 

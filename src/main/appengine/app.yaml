@@ -11,5 +11,7 @@ automatic_scaling:
   max_pending_latency: automatic
 service_account: kotr-test@appspot.gserviceaccount.com
 entrypoint: 'java -jar com.list.synchronization-all.jar'
+env_variables:
+  BUCKET_NAME: kotr-test.appspot.com
 
 
