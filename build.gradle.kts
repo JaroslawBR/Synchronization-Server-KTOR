@@ -2,6 +2,7 @@ import com.google.cloud.tools.gradle.appengine.appyaml.AppEngineAppYamlExtension
 
 val kotlin_version: String by project
 val logback_version: String by project
+val ktor_version: String by project
 
 plugins {
     kotlin("jvm") version "1.8.20"
@@ -11,7 +12,7 @@ plugins {
 }
 
 group = "example.com"
-version = "0.0.1"
+version = "0.1.0"
 
 application {
     mainClass.set("io.ktor.server.netty.EngineMain")
@@ -26,7 +27,7 @@ repositories {
 
 configure<AppEngineAppYamlExtension> {
     stage {
-        setArtifact("build/libs/com.list.synchronization-all.jar")
+        setArtifact("build/libs/${project.name}-all.jar")
     }
     deploy {
         version = "GCLOUD_CONFIG"
@@ -50,6 +51,7 @@ dependencies {
     testImplementation("io.ktor:ktor-server-tests-jvm:2.0.0")
     testImplementation("org.jetbrains.kotlin:kotlin-test-junit:$kotlin_version")
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.5.2")
+    implementation("io.ktor:ktor-server-auth:$ktor_version")
 }
 
 

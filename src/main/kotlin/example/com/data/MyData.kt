@@ -22,10 +22,10 @@ object TaskStorage {
     private val oldHashList: MutableSet<String> = mutableSetOf()
 
     private val idListToIgnore: MutableSet<String> = mutableSetOf()
-    private val lock = Any()
-    private val gson = Gson()
+    internal val lock = Any()
+    val gson = Gson()
 
-    private const val folderPath = "file"
+    const val folderPath = "file"
     private const val taskListFile = "$folderPath/taskList.json"
     private const val hashTaskFile = "$folderPath/hashTask.json"
     private const val oldHashListFile = "$folderPath/oldHashList.json"
@@ -48,25 +48,39 @@ object TaskStorage {
 
     private fun loadFromFile() {
         synchronized(lock) {
-            if (File(taskListFile).exists()) {
-                val taskType = object : TypeToken<MutableMap<String, Task>>() {}.type
-                val loadedTaskList: MutableMap<String, Task> = gson.fromJson(File(taskListFile).readText(), taskType)
-                taskList.clear()
-                taskList.putAll(loadedTaskList)
+            try {
+                if (File(taskListFile).exists()) {
+                    val taskType = object : TypeToken<MutableMap<String, Task>>() {}.type
+                    val loadedTaskList: MutableMap<String, Task> =
+                        gson.fromJson(File(taskListFile).readText(), taskType)
+                    taskList.clear()
+                    taskList.putAll(loadedTaskList)
+                }
+            } catch (e: Exception) {
+                saveToFile()
             }
 
-            if (File(hashTaskFile).exists()) {
-                hashTask = gson.fromJson(File(hashTaskFile).readText(), String::class.java)
+            try {
+                if (File(hashTaskFile).exists()) {
+                    hashTask = gson.fromJson(File(hashTaskFile).readText(), String::class.java)
+                }
+            } catch (e: Exception) {
+                saveToFile()
             }
 
-            if (File(oldHashListFile).exists()) {
-                val oldHashType = object : TypeToken<MutableSet<String>>() {}.type
-                val loadedOldHashList: MutableSet<String> = gson.fromJson(File(oldHashListFile).readText(), oldHashType)
-                oldHashList.clear()
-                oldHashList.addAll(loadedOldHashList)
+            try {
+                if (File(oldHashListFile).exists()) {
+                    val oldHashType = object : TypeToken<MutableSet<String>>() {}.type
+                    val loadedOldHashList: MutableSet<String> = gson.fromJson(File(oldHashListFile).readText(), oldHashType)
+                    oldHashList.clear()
+                    oldHashList.addAll(loadedOldHashList)
+                }
+            } catch (e: Exception) {
+                saveToFile()
             }
         }
     }
+
 
     fun forceClearUpdate(newTaskList: MutableMap<String, Task>): String {
         synchronized(lock) {
@@ -189,3 +203,7 @@ object TaskStorage {
         hashTask = string
     }
 }
+
+
+
+

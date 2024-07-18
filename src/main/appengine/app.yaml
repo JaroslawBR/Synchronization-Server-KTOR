@@ -10,4 +10,6 @@ automatic_scaling:
   min_pending_latency: automatic
   max_pending_latency: automatic
 service_account: kotr-test@appspot.gserviceaccount.com
-entrypoint: 'java -jar com.list.synchronization-all.jar'
+entrypoint: 'java -jar google-appengine-standard-1.0-SNAPSHOT-all.jar'
+
+
