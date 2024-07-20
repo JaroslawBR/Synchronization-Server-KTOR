@@ -1,7 +1,7 @@
 package example.com
 
 
-import example.com.data.TaskStorage
+import example.com.data.DataStorage
 import example.com.plugins.*
 import io.ktor.server.application.*
 
@@ -10,7 +10,7 @@ fun main(args: Array<String>) {
 }
 
 fun Application.module() {
-    TaskStorage.start()
+    DataStorage
     configureSerialization()
     configureRouting()
 }

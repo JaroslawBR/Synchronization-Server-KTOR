@@ -1,77 +1,36 @@
 package example.com.data
 
-import com.google.cloud.storage.BlobId
-import com.google.cloud.storage.BlobInfo
-import com.google.cloud.storage.StorageOptions
 import com.google.gson.Gson
 import com.google.gson.reflect.TypeToken
 import java.security.MessageDigest
 
-data class User(
-    val name: String = "",
-    val password: String = "",
-    val access: Access = Access.SPECTATOR
-)
-
-enum class Access {
-    ADMIN,      // dostęp do wszystkiego
-    MODERATOR,  // dostęp do większości
-    EDITOR,     // wysyłanie + pobieranie
-    SPECTATOR,  // pobieranie
-    GUEST       // brak
-}
-
-data class Task(
-    var title: String = "",
-    var text: String = "",
-    var lastEdit: EditInfo? = null
-)
-
-data class EditInfo(
-    var userId: String = "",
-    var timeStamp: Long = 0
-)
-
-object TaskStorage {
+object DataStorage {
     private val taskList: MutableMap<String, Task> = mutableMapOf() // id - string
     private var hashTask: String? = null
     private val oldHashList: MutableSet<String> = mutableSetOf()
     private val usersList: MutableList<User> = mutableListOf(User("Admin", "adminpass", Access.ADMIN))
 
     private val idListToIgnore: MutableSet<String> = mutableSetOf()
-    internal val lock = Any()
-    val gson = Gson()
+    private val lock = Any()
+    private val gson = Gson()
 
-    const val bucketName = "kotr-test.appspot.com"
-
-    private fun uploadJsonToGcs(fileName: String, data: Any?) {
-        val storage = StorageOptions.getDefaultInstance().service
-        val blobId = BlobId.of(bucketName, fileName)
-        val blobInfo = BlobInfo.newBuilder(blobId).setContentType("application/json").build()
-        val jsonData = gson.toJson(data)
-        storage.create(blobInfo, jsonData.toByteArray())
-        println("File $fileName uploaded to $bucketName.")
-    }
-
-    private fun downloadJsonFromGcs(fileName: String): String? {
-        val storage = StorageOptions.getDefaultInstance().service
-        val blob = storage.get(BlobId.of(bucketName, fileName))
-        return blob?.getContent()?.let { String(it) }
+    init {
+        loadFromFile()
     }
 
     private fun saveToFile() {
         synchronized(lock) {
-            uploadJsonToGcs("taskList.json", taskList)
-            uploadJsonToGcs("hashTask.json", hashTask)
-            uploadJsonToGcs("oldHashList.json", oldHashList)
-            uploadJsonToGcs("usersList.json", usersList)
+            GcsUtils.uploadJsonToGcs("taskList.json", taskList)
+            GcsUtils.uploadJsonToGcs("hashTask.json", hashTask)
+            GcsUtils.uploadJsonToGcs("oldHashList.json", oldHashList)
+            GcsUtils.uploadJsonToGcs("usersList.json", usersList)
         }
     }
 
     private fun loadFromFile() {
         synchronized(lock) {
             try {
-                downloadJsonFromGcs("taskList.json")?.let {
+                GcsUtils.downloadJsonFromGcs("taskList.json")?.let {
                     val taskType = object : TypeToken<MutableMap<String, Task>>() {}.type
                     val loadedTaskList: MutableMap<String, Task> = gson.fromJson(it, taskType)
                     taskList.clear()
@@ -82,7 +41,7 @@ object TaskStorage {
             }
 
             try {
-                downloadJsonFromGcs("hashTask.json")?.let {
+                GcsUtils.downloadJsonFromGcs("hashTask.json")?.let {
                     hashTask = gson.fromJson(it, String::class.java)
                 }
             } catch (e: Exception) {
@@ -90,7 +49,7 @@ object TaskStorage {
             }
 
             try {
-                downloadJsonFromGcs("oldHashList.json")?.let {
+                GcsUtils.downloadJsonFromGcs("oldHashList.json")?.let {
                     val oldHashType = object : TypeToken<MutableSet<String>>() {}.type
                     val loadedOldHashList: MutableSet<String> = gson.fromJson(it, oldHashType)
                     oldHashList.clear()
@@ -101,7 +60,7 @@ object TaskStorage {
             }
 
             try {
-                downloadJsonFromGcs("usersList.json")?.let {
+                GcsUtils.downloadJsonFromGcs("usersList.json")?.let {
                     val userType = object : TypeToken<MutableList<User>>() {}.type
                     val loadUsersList: MutableList<User> = gson.fromJson(it, userType)
                     usersList.clear()
@@ -113,7 +72,6 @@ object TaskStorage {
         }
     }
 
-
     fun addUser(user: User): String {
         synchronized(lock) {
             usersList.add(user)
@@ -122,7 +80,6 @@ object TaskStorage {
         }
     }
 
-
     fun authenticate(name: String, password: String): User? {
         return usersList.find { it.name == name && it.password == password }
     }
@@ -130,11 +87,6 @@ object TaskStorage {
     fun getUser(name: String): User? {
         return usersList.find { it.name == name }
     }
-
-
-
-
-
 
     fun hasAccess(user: User?, requiredAccess: Access): Boolean {
         if (user == null) return false
@@ -147,19 +99,11 @@ object TaskStorage {
         }
     }
 
-    fun start(){
-        loadFromFile()
-    }
-
-
-
-
-
     fun forceClearUpdate(newTaskList: MutableMap<String, Task>): String {
         synchronized(lock) {
             replaceTaskList(newTaskList)
             removeIdFromIdListToIgnore(newTaskList.keys)
-            hashTaskList(taskList)
+            hashTaskList()
         }
         saveToFile()
         return "filesSynchronized"
@@ -194,7 +138,7 @@ object TaskStorage {
                     }
                 }
             }
-            hashTaskList(taskList)
+            hashTaskList()
             saveToFile()
             return if (hashTask == receivedHash) "filesSynchronized" else "downlandFile"
         }
@@ -224,12 +168,11 @@ object TaskStorage {
                 removeTask(id)
                 idListToIgnore.add(id)
             }
-            hashTaskList(taskList)
+            hashTaskList()
             saveToFile()
             return if (hashTask == receivedHash) "filesSynchronized" else "downlandFile"
         }
     }
-
 
     private fun removeTask(id: String) {
         taskList.remove(id)
@@ -257,7 +200,7 @@ object TaskStorage {
         }
     }
 
-    private fun hashTaskList(taskList: Map<String, Task>) {
+    private fun hashTaskList() {
         val digest = MessageDigest.getInstance("SHA-256")
         taskList.toSortedMap().forEach { (key, task) ->
             digest.update(key.toByteArray())
@@ -276,6 +219,7 @@ object TaskStorage {
         hashTask = string
     }
 }
+
 
 
 

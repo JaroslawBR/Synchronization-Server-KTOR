@@ -1,10 +1,11 @@
 package example.com.plugins
 
 import example.com.data.*
-import example.com.data.TaskStorage.authenticate
+import example.com.data.DataStorage.authenticate
 import io.ktor.http.*
 import io.ktor.server.application.*
 import io.ktor.server.auth.*
+import io.ktor.server.http.content.*
 import io.ktor.server.request.*
 import io.ktor.server.response.*
 import io.ktor.server.routing.*
@@ -30,13 +31,16 @@ fun Application.configureRouting() {
             call.respondText("Hello Users!!")
         }
 
+
+
+
         authenticate("auth-basic") {
 
 
             get("/checkTaskList") {
                 authorize(call, Access.SPECTATOR) {
                     val receivedHash = call.request.queryParameters["hash"] ?: ""
-                    val result = TaskStorage.checkReceiveHash(receivedHash)
+                    val result = DataStorage.checkReceiveHash(receivedHash)
                     call.respond(result)
                 }
             }
@@ -45,7 +49,7 @@ fun Application.configureRouting() {
                 authorize(call, Access.EDITOR) {
                     val newTaskList = call.receive<MutableMap<String, Task>>()
                     val receivedHash = call.request.headers["Hash"] ?: ""
-                    val result = TaskStorage.addEditNewTask(newTaskList, receivedHash)
+                    val result = DataStorage.addEditNewTask(newTaskList, receivedHash)
                     call.respond(result)
                 }
             }
@@ -53,21 +57,21 @@ fun Application.configureRouting() {
             post("/clearUpdateTaskList") {
                 authorize(call, Access.MODERATOR) {
                     val newTaskList = call.receive<MutableMap<String, Task>>()
-                    val result = TaskStorage.forceClearUpdate(newTaskList)
+                    val result = DataStorage.forceClearUpdate(newTaskList)
                     call.respond(result)
                 }
             }
 
             get("/downlandTaskList") {
                 authorize(call, Access.SPECTATOR) {
-                    val taskList = TaskStorage.returnListSynchronizedList()
+                    val taskList = DataStorage.returnListSynchronizedList()
                     call.respond(taskList)
                 }
             }
 
             get("/downlandIgnoreTask") {
                 authorize(call, Access.EDITOR) {
-                    val idListToIgnore = TaskStorage.returnIdToIgnore()
+                    val idListToIgnore = DataStorage.returnIdToIgnore()
                     call.respond(idListToIgnore)
                 }
             }
@@ -76,7 +80,7 @@ fun Application.configureRouting() {
                 authorize(call, Access.EDITOR) {
                     val idListToIgnore = call.receive<List<String>>()
                     val receivedHash = call.request.headers["Hash"] ?: ""
-                    val result = TaskStorage.removeFromList(idListToIgnore, receivedHash)
+                    val result = DataStorage.removeFromList(idListToIgnore, receivedHash)
                     call.respond(result)
                 }
             }
@@ -84,7 +88,7 @@ fun Application.configureRouting() {
             post("/addNewUsers"){
                 authorize(call, Access.ADMIN){
                     val user = call.receive<User>()
-                    val result = TaskStorage.addUser(user)
+                    val result = DataStorage.addUser(user)
                     call.respond(result)
 
 
@@ -97,8 +101,8 @@ fun Application.configureRouting() {
 
 suspend inline fun authorize(call: ApplicationCall, requiredAccess: Access, crossinline block: suspend () -> Unit) {
     val principal = call.principal<UserIdPrincipal>() ?: return call.respondText("Unauthorized", status = HttpStatusCode.Unauthorized)
-    val user = TaskStorage.getUser(principal.name)
-    if (TaskStorage.hasAccess(user, requiredAccess)) {
+    val user = DataStorage.getUser(principal.name)
+    if (DataStorage.hasAccess(user, requiredAccess)) {
         block()
     } else {
         call.respondText("Forbidden", status = HttpStatusCode.Forbidden)
