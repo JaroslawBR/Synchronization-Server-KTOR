@@ -2,7 +2,6 @@ runtime: java11
 env: standard
 instance_class: F1
 handlers:
-
   - url: /.*
     script: this field is required, but ignored
 
