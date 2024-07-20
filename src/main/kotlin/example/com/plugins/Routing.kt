@@ -31,6 +31,12 @@ fun Application.configureRouting() {
             call.respondText("Hello Users!!")
         }
 
+        get("/favicon.ico") {
+            val favicon = call.resolveResource("favicon.ico")
+            if (favicon != null) {
+                call.respond(favicon)
+            }
+        }
 
 
 
