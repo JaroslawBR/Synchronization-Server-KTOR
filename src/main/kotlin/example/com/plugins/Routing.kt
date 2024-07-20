@@ -1,7 +1,11 @@
 package example.com.plugins
 
-import example.com.data.*
+import example.com.data.Access
+import example.com.data.DataStorage
 import example.com.data.DataStorage.authenticate
+import example.com.data.GcsUtils.downloadIcoFromGcs
+import example.com.data.Task
+import example.com.data.User
 import io.ktor.http.*
 import io.ktor.server.application.*
 import io.ktor.server.auth.*
@@ -26,19 +30,22 @@ fun Application.configureRouting() {
     }
 
     routing {
+
         get("/") {
-            println("Test")
-            call.respondText("Hello Users!!")
+            call.respondText("Witaj użytkowniku!!")
         }
 
-        get("/favicon.ico") {
-            val favicon = call.resolveResource("favicon.ico")
-            if (favicon != null) {
-                call.respond(favicon)
+        get("favicon.ico") {
+            val fullPath = "static/favicon.ico"
+            val content = downloadIcoFromGcs(fullPath)
+            if (content != null) {
+                call.respondBytes(content, ContentType.Image.XIcon)
+            } else {
+                call.respond(HttpStatusCode.NotFound, "Favicon not found")
             }
         }
 
-
+        staticResources("/", "static")
 
         authenticate("auth-basic") {
 
