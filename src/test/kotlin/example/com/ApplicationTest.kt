@@ -9,7 +9,7 @@ import kotlin.test.*
 
 class ApplicationTest {
     @Test
-    fun testRoot() = testApplication {
+    fun testRoot(): Unit = testApplication {
         client.get("/").apply {
             assertEquals(HttpStatusCode.OK, status)
             assertEquals("Witaj użytkowniku!!", bodyAsText())
